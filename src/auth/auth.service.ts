@@ -14,7 +14,7 @@ export class AuthService {
 
   async register(dto: any) {
     const user = await this.usersService.create(dto);
-    return this.generateTokens(user.id);
+    return this.generateTokens(user.id, user);
   }
 
   async login(dto: any) {
@@ -24,10 +24,10 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
     if (!isPasswordValid) throw new UnauthorizedException('Invalid credentials');
     
-    return this.generateTokens(user.id);
+    return this.generateTokens(user.id, user);
   }
 
-  async generateTokens(userId: string) {
+  async generateTokens(userId: string, user: any) {
     const payload = { sub: userId };
     const accessToken = this.jwtService.sign(payload);
     
@@ -45,14 +45,20 @@ export class AuthService {
     });
 
     return {
-      access_token: accessToken,
-      refresh_token: refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+      accessToken,
+      refreshToken,
     };
   }
 
   async refresh(token: string) {
     const record = await this.prisma.refreshToken.findUnique({
       where: { token },
+      include: { user: true },
     });
     
     if (!record || record.expiresAt < new Date()) {
@@ -68,6 +74,6 @@ export class AuthService {
     // Optional: delete old refresh token
     await this.prisma.refreshToken.delete({ where: { token } });
 
-    return this.generateTokens(record.userId);
+    return this.generateTokens(record.userId, record.user);
   }
 }
