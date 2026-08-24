@@ -14,8 +14,9 @@ COPY package*.json ./
 RUN npm install --only=production
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/prisma ./prisma
 
 ENV PORT=3001
 EXPOSE 3001
 
-CMD ["node", "dist/main.js"]
+CMD sh -c "npx prisma db push && node dist/seed.js && node dist/main.js"
